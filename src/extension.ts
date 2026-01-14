@@ -1,5 +1,16 @@
 import * as vscode from 'vscode';
 
+// 出力チャネルと簡易ロガー
+const output = vscode.window.createOutputChannel('Multi AI Chat');
+
+function log(message: string, level = 'INFO') {
+	const time = new Date().toISOString();
+	// OutputChannel に出力
+	output.appendLine(`[${time}] [${level}] ${message}`);
+	// 開発中はデバッグコンソールにも出す
+	console.log(`${time} [${level}] ${message}`);
+}
+
 /**
  * 拡張機能が有効化される時に呼ばれるメイン関数
  * Multi AI チャットを開くコマンドを登録します
@@ -7,20 +18,29 @@ import * as vscode from 'vscode';
  * @param {vscode.ExtensionContext} context - 拡張機能のコンテキスト
  */
 export function activate(context: vscode.ExtensionContext) {
-	console.log('Multi AI Chat extension is now active!');
+	// サブスクリプションに OutputChannel を登録して自動破棄させる
+	context.subscriptions.push(output);
+	log('Multi AI Chat extension is now active!');
+	// Extension Development Host の出力パネルに表示（フォーカスは奪わない）
+	try {
+		// preserveFocus=false で出力パネルを選択状態にする
+		output.show(false);
+	} catch (e) {
+		// ignore
+	}
 
 	let currentPanel: vscode.WebviewPanel | undefined = undefined;
 
 	// チャットパネルを開くコマンド
 	const openChatCommand = vscode.commands.registerCommand('multiai-chat.openChat', () => {
-		console.log('Opening Multi AI Chat panel...');
+		log('Opening Multi AI Chat panel...');
 		vscode.window.showInformationMessage('Multi AI Chat panel opening...');
 		
 		if (currentPanel) {
 			currentPanel.reveal(vscode.ViewColumn.One);
 		} else {
 			const panel = vscode.window.createWebviewPanel(
-				'chatgptChat',
+				'MultiAIChat',
 				'Multi AI Chat',
 				vscode.ViewColumn.One,
 				{
@@ -30,12 +50,12 @@ export function activate(context: vscode.ExtensionContext) {
 			);
 
 			currentPanel = panel;
-			console.log('Panel created successfully');
+			log('Panel created successfully');
 			panel.webview.html = getWebviewContent();
 
 			// チャット履歴を読み込んで、Webviewに送信
 			const chatHistory = context.globalState.get<Array<{text: string, isUser: boolean}>>('chatHistory') || [];
-			console.log('[DEBUG] Loading chat history, count:', chatHistory.length);
+		log(`Loading chat history, count: ${chatHistory.length}`, 'DEBUG');
 			for (const msg of chatHistory) {
 				panel.webview.postMessage({
 					type: 'restoreMessage',
@@ -99,7 +119,7 @@ export function activate(context: vscode.ExtensionContext) {
 		// チャットパネルが開いていなければ開く
 		if (!currentPanel) {
 			const panel = vscode.window.createWebviewPanel(
-				'chatgptChat',
+				'MultiAIChat',
 				'Multi AI Chat',
 				vscode.ViewColumn.One,
 				{
@@ -140,6 +160,19 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 	context.subscriptions.push(openChatCommand, sendSelectionCommand);
+
+	// コマンド: ログ表示
+	const showLogsCommand = vscode.commands.registerCommand('multiai-chat.showLogs', () => {
+		try {
+			// フォーカスを当てて表示
+			output.show(false);
+			log('Output channel shown by command', 'DEBUG');
+		} catch (e) {
+			// ignore
+		}
+	});
+
+	context.subscriptions.push(showLogsCommand);
 }
 
 /**

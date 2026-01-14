@@ -64,7 +64,7 @@ npm run compile
 
 1. VS Codeでこのプロジェクトを開く
 2. F5キーを押して拡張機能開発ホストを起動
-3. 新しいウィンドウでコマンドパレットから "ChatGPT: Open Chat" を実行
+3. 新しいウィンドウでコマンドパレットから "Multi AI Chat: Open Chat" を実行
 
 ## 注意事項
 
